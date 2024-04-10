@@ -2,10 +2,11 @@
 #define GARDENOMETER_STATE_H
 
 typedef enum garden_state {
-  NONE,
+  NONE = 0,
+  ERROR,
+  CLEAR_ERROR,
   STATUS,
-  CALIBRATION,
-  ERROR
+  CALIBRATION
 } garden_state_t;
 
 typedef struct state_machine {
