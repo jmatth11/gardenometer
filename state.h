@@ -6,7 +6,8 @@ typedef enum garden_state {
   ERROR,
   CLEAR_ERROR,
   STATUS,
-  CALIBRATION
+  CALIBRATION,
+  CONFIG
 } garden_state_t;
 
 typedef struct state_machine {
@@ -14,6 +15,7 @@ typedef struct state_machine {
   void(*status)(struct state_machine* sm, void* context);
   void(*calibration)(struct state_machine* sm, void* context);
   void(*error)(struct state_machine* sm, void* context);
+  void(*config)(struct state_machine* sm, void* context);
 } state_machine_t;
 
 void handle_state_machine(state_machine_t* sm, void* context);
