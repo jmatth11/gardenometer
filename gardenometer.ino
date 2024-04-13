@@ -218,7 +218,7 @@ int parse_value(String data) {
 }
 
 void publish_error(String err) {
-  println("status:error=\""+err+"\"");
+  println("status:e="+err);
 }
 
 struct config parse_config(String data) {
