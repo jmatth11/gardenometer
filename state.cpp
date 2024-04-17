@@ -2,7 +2,7 @@
 
 void handle_state_machine(state_machine_t *sm, void *context) {
   switch(sm->state) {
-    case STATUS:
+    case STATUS_CALL:
       sm->status(sm, context);
       break;
     case CALIBRATION:

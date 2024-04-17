@@ -105,7 +105,7 @@ void setup() {
   // initialize global structures
   // Pass our oneWire reference to Dallas Temperature sensor
   DallasTemperature sensors(&oneWire);
-  state_machine.state = STATUS;
+  state_machine.state = STATUS_CALL;
   state_machine.status = garden_status;
   state_machine.calibration = garden_calibration;
   state_machine.error = garden_error;
@@ -199,7 +199,7 @@ void garden_calibration(state_machine_t *machine, void* context) {
   delay(1000);
   digitalWrite(state->config.cal_pin, LOW);
   state->calibration.waterValue = avg_moisture();
-  machine->state = STATUS;
+  machine->state = STATUS_CALL;
 }
 
 void garden_error(state_machine_t *machine, void* context) {
@@ -209,7 +209,7 @@ void garden_error(state_machine_t *machine, void* context) {
     machine->state = NONE;
   } else {
     digitalWrite(state->config.err_pin, LOW);
-    machine->state = STATUS;
+    machine->state = STATUS_CALL;
   }
 }
 
@@ -337,5 +337,5 @@ void garden_config(state_machine_t *machine, void* context) {
   state->config.good_pin = get_config_value(state, GOOD_INDEX, state->config.good_pin, local.good_pin);
   digitalWrite(state->config.err_pin, LOW);
   digitalWrite(state->config.good_pin, HIGH);
-  machine->state = STATUS;
+  machine->state = STATUS_CALL;
 }
