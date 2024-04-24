@@ -2,6 +2,8 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include "state.h"
+#include "garden_types.h"
+#include "serial_parse.h"
 
 // define constants
 #define CONTROLLER_ID "G1"
@@ -11,44 +13,6 @@
 #define GOOD_STATE_PIN 6
 #define CALIBRATION_PIN 8
 #define ERROR_PIN 10
-
-const char *code_prefix = "code:";
-const char *config_prefix = "config:";
-const char *cal_prefix = "cal:";
-const char *status_prefix = "status:";
-
-// define structures
-struct calibration {
-  int airValue;
-  int waterValue;
-};
-
-enum config_index {
-  WAIT_INDEX=0,
-  MOISTURE_INDEX,
-  LUX_INDEX,
-  TEMP_INDEX,
-  CAL_INDEX,
-  ERR_INDEX,
-  GOOD_INDEX,
-};
-
-struct config {
-  int wait_time;
-  int moisture_pin;
-  int lux_pin;
-  int temp_pin;
-  int cal_pin;
-  int err_pin;
-  int good_pin;
-};
-
-struct state {
-  struct calibration calibration;
-  DallasTemperature temperature;
-  struct config config;
-  String serial_data;
-};
 
 // define functions
 void garden_status(state_machine_t *machine, void* context);
@@ -83,6 +47,7 @@ float read_lux(int pin) {
   // this constant assumes AREF is 5v.
   return raw_value * 0.9765625;
 }
+
 
 /**
  * Read the temperature sensor and convert it to Fahrenheit value.
@@ -134,19 +99,6 @@ void setup() {
   sensors.begin();
   digitalWrite(config.good_pin, HIGH);
   digitalWrite(config.err_pin, LOW);
-}
-
-void parse_serial(state_machine_t* sm, struct state* state, String data) {
-  if (data.startsWith(code_prefix)) {
-    String code = data.substring(strlen(code_prefix));
-    int code_value = code.toInt();
-    sm->state = code_value;
-  } else if (data.startsWith(config_prefix)) {
-    sm->state = CONFIG;
-    state->serial_data = data.substring(strlen(config_prefix));
-  } else if (data.startsWith(cal_prefix)) {
-    sm->state = CALIBRATION;
-  }
 }
 
 void flip_leds_on_state(const state_machine_t* sm, struct state *state) {
@@ -214,90 +166,8 @@ void garden_error(state_machine_t *machine, void* context) {
   }
 }
 
-int parse_value(String data) {
-  String value = data.substring(2, data.indexOf(';'));
-  return atoi(value.c_str());
-}
-
 void publish_error(String err) {
   println("status:e="+err);
-}
-
-struct config parse_config(String data) {
-  String err_msg = "data format error";
-  struct config local;
-  while (data != "\n") {
-    config_index idx = atoi(data.charAt(0));
-    switch(idx) {
-      case WAIT_INDEX: {
-        if (data.charAt(1) == '=') {
-          local.wait_time = parse_value(data);
-          data = data.substring(data.indexOf(';')+1);
-        } else {
-          publish_error(err_msg + " code:" + idx);
-        }
-        break;
-      }
-      case MOISTURE_INDEX:{
-        if (data.charAt(1) == '=') {
-          local.moisture_pin = parse_value(data);
-          data = data.substring(data.indexOf(';')+1);
-        } else {
-          publish_error(err_msg + " code:" + idx);
-        }
-        break;
-      }
-      case LUX_INDEX:{
-        if (data.charAt(1) == '=') {
-          local.lux_pin = parse_value(data);
-          data = data.substring(data.indexOf(';')+1);
-        } else {
-          publish_error(err_msg + " code:" + idx);
-        }
-        break;
-      }
-      case TEMP_INDEX:{
-        if (data.charAt(1) == '=') {
-          local.temp_pin = parse_value(data);
-          data = data.substring(data.indexOf(';')+1);
-        } else {
-          publish_error(err_msg + " code:" + idx);
-        }
-        break;
-      }
-      case CAL_INDEX:{
-        if (data.charAt(1) == '=') {
-          local.cal_pin = parse_value(data);
-          data = data.substring(data.indexOf(';')+1);
-        } else {
-          publish_error(err_msg + " code:" + idx);
-        }
-        break;
-      }
-      case ERR_INDEX:{
-        if (data.charAt(1) == '=') {
-          local.err_pin = parse_value(data);
-          data = data.substring(data.indexOf(';')+1);
-        } else {
-          publish_error(err_msg + " code:" + idx);
-        }
-        break;
-      }
-      case GOOD_INDEX:{
-        if (data.charAt(1) == '=') {
-          local.good_pin = parse_value(data);
-          data = data.substring(data.indexOf(';')+1);
-        } else {
-          publish_error(err_msg + " code:" + idx);
-        }
-        break;
-      }
-      default:{
-        publish_error(err_msg + " code:" + idx);
-        break;
-      }
-    }
-  }
 }
 
 int get_config_value(struct state* state, enum config_index type, int orig, int incoming) {
@@ -328,7 +198,11 @@ int get_config_value(struct state* state, enum config_index type, int orig, int 
 
 void garden_config(state_machine_t *machine, void* context) {
   struct state *state = (struct state *)context;
-  struct config local = parse_config(state->serial_data);
+  struct config local;
+  String err = parse_config(state->serial_data, &local);
+  if (err.length() > 0) {
+    publish_error(err);
+  }
   state->config.wait_time = get_config_value(state, WAIT_INDEX, state->config.wait_time, local.wait_time);
   state->config.moisture_pin = get_config_value(state, MOISTURE_INDEX, state->config.moisture_pin, local.moisture_pin);
   state->config.lux_pin = get_config_value(state, LUX_INDEX, state->config.lux_pin, local.lux_pin);
