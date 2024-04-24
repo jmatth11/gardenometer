@@ -35,7 +35,7 @@ struct config parse_config(String data) {
   String err_msg = "data format error";
   struct config local;
   struct parse_info result;
-  while (data != "\n" || data.length() > 1) {
+  while (data.length() > 0) {
     config_index idx = atoi(data.charAt(0));
     switch(idx) {
       case WAIT_INDEX: {
