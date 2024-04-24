@@ -5,10 +5,10 @@
 #include "state.h"
 #include "garden_types.h"
 
-const char *code_prefix = "code:";
-const char *config_prefix = "config:";
-const char *cal_prefix = "cal:";
-const char *status_prefix = "status:";
+extern const char *code_prefix;
+extern const char *config_prefix;
+extern const char *cal_prefix;
+extern const char *status_prefix;
 
 struct parse_info {
   int value;
@@ -16,7 +16,7 @@ struct parse_info {
 };
 
 void parse_serial(state_machine_t* sm, struct state* state, String data);
-struct config parse_config(String data);
+String parse_config(String data, struct config* out);
 struct parse_info parse_value(String data);
 
 #endif

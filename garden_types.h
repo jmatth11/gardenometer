@@ -16,7 +16,7 @@ enum config_index {
   TEMP_INDEX,
   CAL_INDEX,
   ERR_INDEX,
-  GOOD_INDEX,
+  GOOD_INDEX
 };
 
 struct config {

@@ -48,6 +48,7 @@ float read_lux(int pin) {
   return raw_value * 0.9765625;
 }
 
+
 /**
  * Read the temperature sensor and convert it to Fahrenheit value.
  * @param[in] sensor The Dallas Temperature sensor.
@@ -197,7 +198,11 @@ int get_config_value(struct state* state, enum config_index type, int orig, int 
 
 void garden_config(state_machine_t *machine, void* context) {
   struct state *state = (struct state *)context;
-  struct config local = parse_config(state->serial_data);
+  struct config local;
+  String err = parse_config(state->serial_data, &local);
+  if (err.length() > 0) {
+    publish_error(err);
+  }
   state->config.wait_time = get_config_value(state, WAIT_INDEX, state->config.wait_time, local.wait_time);
   state->config.moisture_pin = get_config_value(state, MOISTURE_INDEX, state->config.moisture_pin, local.moisture_pin);
   state->config.lux_pin = get_config_value(state, LUX_INDEX, state->config.lux_pin, local.lux_pin);
