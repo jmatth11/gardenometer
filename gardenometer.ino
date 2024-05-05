@@ -9,10 +9,10 @@
 #define CONTROLLER_ID "G1"
 #define MOISTURE_PIN A0
 #define LUX_PIN A2
-#define TEMP_PIN 3
-#define GOOD_STATE_PIN 6
+#define TEMP_PIN 2
+#define GOOD_STATE_PIN 10
 #define CALIBRATION_PIN 8
-#define ERROR_PIN 10
+#define ERROR_PIN 6
 
 // define functions
 void garden_status(state_machine_t *machine, void* context);
@@ -34,7 +34,8 @@ void println(String msg) {
  */
 int read_soil_moisture(int pin, const struct calibration cal) {
   int raw_value = analogRead(pin);
-  return map(raw_value, cal.airValue, cal.waterValue, 0, 100);
+  return raw_value;
+  //return map(raw_value, cal.airValue, cal.waterValue, 0, 100);
 }
 
 /**
@@ -42,10 +43,12 @@ int read_soil_moisture(int pin, const struct calibration cal) {
  * @return The lux value.
  */
 float read_lux(int pin) {
+  int const AREF = 5.0;
   float raw_value = analogRead(pin);
-  // multiply value by constant to get lux value.
-  // this constant assumes AREF is 5v.
-  return raw_value * 0.9765625;
+  float volts = raw_value * AREF / 1024.0;    // Convert reading to voltage
+  float amps = volts / 10000.0;             // Convert to amps across 10K resistor
+  float microamps = amps * 1000000.0;             // Convert amps to microamps
+  return microamps * 2.0;                  // 2 microamps = 1 lux
 }
 
 
@@ -68,6 +71,7 @@ OneWire oneWire(TEMP_PIN);
 // setup function
 void setup() {
   Serial.begin(9600);
+  Serial.println("booting up...");
   // initialize global structures
   // Pass our oneWire reference to Dallas Temperature sensor
   DallasTemperature sensors(&oneWire);
@@ -77,7 +81,9 @@ void setup() {
   state_machine.error = garden_error;
   state_machine.config = garden_config;
   struct calibration calibration;
-  memset(&calibration, 0, sizeof(struct calibration));
+  // default calibration values
+  calibration.airValue = 757;
+  calibration.waterValue = 740;
   state.calibration = calibration;
   struct config config;
   config.wait_time = 1000;
@@ -98,6 +104,7 @@ void setup() {
   pinMode(config.lux_pin, INPUT);
   sensors.begin();
   digitalWrite(config.good_pin, HIGH);
+  digitalWrite(config.cal_pin, LOW);
   digitalWrite(config.err_pin, LOW);
 }
 
