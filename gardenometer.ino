@@ -22,6 +22,8 @@ const String cal_water_msg = "Reading water values...";
 const String cal_switch_msg = "Put moisture sensor in water.";
 const String done_msg = "Done.";
 const String config_header = "Configuring.";
+// 5 minutes
+unsigned long print_wait_period = 300000;
 
 // initialize globals
 struct state state;
@@ -46,7 +48,7 @@ void println(String msg) {
 void display_status(int moisture, float lux, float temp) {
   String header = String(CONTROLLER_ID) + " DATA";
   String msg = "Lux:";
-  msg += String(lux) + "Temp:" + String(temp) + "Moisture:" + String(moisture);
+  msg += String(lux) + " Temp:" + String(temp) + " Moisture:" + String(moisture);
   display.write(header, msg);
 }
 
@@ -112,6 +114,7 @@ void setup() {
   calibration.airValue = 0;
   calibration.waterValue = 0;
   state.calibration = calibration;
+  state.last_print = 0;
   struct config config;
   config.wait_time = 1000;
   config.good_pin = GOOD_STATE_PIN;
@@ -169,12 +172,18 @@ int avg_moisture() {
 // implement state functions
 void garden_status(state_machine_t *machine, void* context) {
   struct state *state = (struct state *)context;
+  unsigned long now = millis();
+  unsigned long diff = now - state->last_print;
+  if (state->last_print != 0 && diff <= print_wait_period) {
+    return;
+  }
   int moisture = read_soil_moisture(state->config.moisture_pin, state->calibration);
   float lux = read_lux(state->config.lux_pin);
   float temp = read_temperature(&state->temperature);
   String value = String(status_prefix) + "t=" + String(temp) + ";l=" + String(lux) + ";m=" + String(moisture);
   println(value);
   display_status(moisture, lux, temp);
+  state->last_print = millis();
 }
 
 void garden_calibration(state_machine_t *machine, void* context) {
