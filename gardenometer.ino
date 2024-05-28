@@ -78,7 +78,6 @@ float read_lux(int pin) {
   return microamps * 2.0;                  // 2 microamps = 1 lux
 }
 
-
 /**
  * Read the temperature sensor and convert it to Fahrenheit value.
  * @param[in] sensor The Dallas Temperature sensor.
@@ -117,34 +116,28 @@ void setup() {
   state.last_print = 0;
   struct config config;
   config.wait_time = 1000;
-  config.good_pin = GOOD_STATE_PIN;
-  config.cal_pin = CALIBRATION_PIN;
-  config.err_pin = ERROR_PIN;
-  config.lux_pin = LUX_PIN;
-  config.moisture_pin = MOISTURE_PIN;
-  config.temp_pin = TEMP_PIN;
   state.config = config;
   state.temperature = sensors;
 
   // set pins
-  pinMode(config.good_pin, OUTPUT);
-  pinMode(config.cal_pin, OUTPUT);
-  pinMode(config.err_pin, OUTPUT);
-  pinMode(config.moisture_pin, INPUT);
-  pinMode(config.lux_pin, INPUT);
+  pinMode(GOOD_STATE_PIN, OUTPUT);
+  pinMode(CALIBRATION_PIN, OUTPUT);
+  pinMode(ERROR_PIN, OUTPUT);
+  pinMode(MOISTURE_PIN, INPUT);
+  pinMode(LUX_PIN, INPUT);
   sensors.begin();
-  digitalWrite(config.good_pin, HIGH);
-  digitalWrite(config.cal_pin, LOW);
-  digitalWrite(config.err_pin, LOW);
+  digitalWrite(GOOD_STATE_PIN, HIGH);
+  digitalWrite(CALIBRATION_PIN, LOW);
+  digitalWrite(ERROR_PIN, LOW);
 }
 
 void flip_leds_on_state(const state_machine_t* sm, struct state *state) {
   if (sm->state == ERROR) {
-    digitalWrite(state->config.good_pin, LOW);
-    digitalWrite(state->config.err_pin, HIGH);
+    digitalWrite(GOOD_STATE_PIN, LOW);
+    digitalWrite(ERROR_PIN, HIGH);
   } else if (sm->state == CLEAR_ERROR) {
-    digitalWrite(state->config.good_pin, HIGH);
-    digitalWrite(state->config.err_pin, LOW);
+    digitalWrite(GOOD_STATE_PIN, HIGH);
+    digitalWrite(ERROR_PIN, LOW);
   }
 }
 
@@ -177,8 +170,8 @@ void garden_status(state_machine_t *machine, void* context) {
   if (state->last_print != 0 && diff <= print_wait_period) {
     return;
   }
-  int moisture = read_soil_moisture(state->config.moisture_pin, state->calibration);
-  float lux = read_lux(state->config.lux_pin);
+  int moisture = read_soil_moisture(MOISTURE_PIN, state->calibration);
+  float lux = read_lux(LUX_PIN);
   float temp = read_temperature(&state->temperature);
   String value = String(status_prefix) + "t=" + String(temp) + ";l=" + String(lux) + ";m=" + String(moisture);
   println(value);
@@ -189,15 +182,15 @@ void garden_status(state_machine_t *machine, void* context) {
 void garden_calibration(state_machine_t *machine, void* context) {
   struct state *state = (struct state *)context;
   display.write(calibration_header, "");
-  digitalWrite(state->config.cal_pin, HIGH);
+  digitalWrite(CALIBRATION_PIN, HIGH);
   delay(3000);
-  digitalWrite(state->config.cal_pin, LOW);
+  digitalWrite(CALIBRATION_PIN, LOW);
   display.write(calibration_header, cal_air_msg);
   state->calibration.airValue = avg_moisture();
   display.write(calibration_header, cal_switch_msg);
-  digitalWrite(state->config.cal_pin, HIGH);
+  digitalWrite(CALIBRATION_PIN, HIGH);
   delay(3000);
-  digitalWrite(state->config.cal_pin, LOW);
+  digitalWrite(CALIBRATION_PIN, LOW);
   display.write(calibration_header, cal_water_msg);
   state->calibration.waterValue = avg_moisture();
   display.write(calibration_header, done_msg);
@@ -207,10 +200,10 @@ void garden_calibration(state_machine_t *machine, void* context) {
 void garden_error(state_machine_t *machine, void* context) {
   struct state* state = (struct state*)context;
   if (machine->state == ERROR) {
-    digitalWrite(state->config.err_pin, HIGH);
+    digitalWrite(ERROR_PIN, HIGH);
     machine->state = NONE;
   } else {
-    digitalWrite(state->config.err_pin, LOW);
+    digitalWrite(ERROR_PIN, LOW);
     machine->state = STATUS_CALL;
   }
 }
@@ -218,32 +211,6 @@ void garden_error(state_machine_t *machine, void* context) {
 void publish_error(String err) {
   display.write(err_header, err);
   println("status:e="+err);
-}
-
-int get_config_value(struct state* state, enum config_index type, int orig, int incoming) {
-  if (incoming != 0 && orig != incoming) {
-    switch (type) {
-      case MOISTURE_INDEX:
-      case LUX_INDEX:
-        pinMode(incoming, INPUT);
-        break;
-      case TEMP_INDEX:{
-        // temp already has a pointer to oneWire
-        oneWire.begin(incoming);
-        state->temperature.begin();
-        break;
-      }
-      case CAL_INDEX:
-      case ERR_INDEX:
-      case GOOD_INDEX:
-        pinMode(incoming, OUTPUT);
-        break;
-      default:
-        break;
-    }
-    return incoming;
-  }
-  return orig;
 }
 
 void garden_config(state_machine_t *machine, void* context) {
@@ -258,15 +225,11 @@ void garden_config(state_machine_t *machine, void* context) {
   if (err.length() > 0) {
     publish_error(err);
   }
-  state->config.wait_time = get_config_value(state, WAIT_INDEX, state->config.wait_time, local.wait_time);
-  state->config.moisture_pin = get_config_value(state, MOISTURE_INDEX, state->config.moisture_pin, local.moisture_pin);
-  state->config.lux_pin = get_config_value(state, LUX_INDEX, state->config.lux_pin, local.lux_pin);
-  state->config.temp_pin = get_config_value(state, TEMP_INDEX, state->config.temp_pin, local.temp_pin);
-  state->config.cal_pin = get_config_value(state, CAL_INDEX, state->config.cal_pin, local.cal_pin);
-  state->config.err_pin = get_config_value(state, ERR_INDEX, state->config.err_pin, local.err_pin);
-  state->config.good_pin = get_config_value(state, GOOD_INDEX, state->config.good_pin, local.good_pin);
-  digitalWrite(state->config.err_pin, LOW);
-  digitalWrite(state->config.good_pin, HIGH);
+  state->config.wait_time = local.wait_time;
+  state->calibration.airValue = local.moisture_air;
+  state->calibration.waterValue = local.moisture_water;
+  digitalWrite(ERROR_PIN, LOW);
+  digitalWrite(GOOD_STATE_PIN, HIGH);
   display.write(
     done_msg,
     display.getCenteredX(done_msg),
