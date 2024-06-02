@@ -22,8 +22,8 @@ const String cal_water_msg = "Reading water values...";
 const String cal_switch_msg = "Put moisture sensor in water.";
 const String done_msg = "Done.";
 const String config_header = "Configuring.";
-// 5 minutes
-unsigned long print_wait_period = 300000;
+// 1 minute
+unsigned long print_wait_period = 60000;
 
 // initialize globals
 struct state state;
@@ -47,8 +47,8 @@ void println(String msg) {
 
 void display_status(int moisture, float lux, float temp) {
   String header = String(CONTROLLER_ID) + " DATA";
-  String msg = "Lux:";
-  msg += String(lux) + " Temp:" + String(temp) + " Moisture:" + String(moisture);
+  String msg = "L:";
+  msg = msg + String(lux) + " T:" + String(temp) + "\n M:" + String(moisture);
   display.write(header, msg);
 }
 
@@ -59,7 +59,7 @@ void display_status(int moisture, float lux, float temp) {
  */
 int read_soil_moisture(int pin, const struct calibration cal) {
   int raw_value = analogRead(pin);
-  if (cal.airValue == 0 && cal.waterValue == 0) {
+  if (cal.airValue == cal.waterValue) {
     return raw_value;
   }
   return map(raw_value, cal.airValue, cal.waterValue, 0, 100);
@@ -167,7 +167,7 @@ void garden_status(state_machine_t *machine, void* context) {
   struct state *state = (struct state *)context;
   unsigned long now = millis();
   unsigned long diff = now - state->last_print;
-  if (state->last_print != 0 && diff <= print_wait_period) {
+  if (state->last_print != 0 && diff <= print_wait_period && now > state->last_print) {
     return;
   }
   int moisture = read_soil_moisture(MOISTURE_PIN, state->calibration);
