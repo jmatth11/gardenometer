@@ -195,6 +195,8 @@ void garden_calibration(state_machine_t *machine, void* context) {
   state->calibration.waterValue = avg_moisture();
   display.write(calibration_header, done_msg);
   machine->state = STATUS_CALL;
+  String update_str = String(config_prefix) + "ma=" + String(state->calibration.airValue) + ";mw=" + String(state->calibration.waterValue);
+  println(update_str);
 }
 
 void garden_error(state_machine_t *machine, void* context) {
