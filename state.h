@@ -20,4 +20,6 @@ typedef struct state_machine {
 
 void handle_state_machine(state_machine_t* sm, void* context);
 
+garden_state_t int_to_garden_state_t(int);
+
 #endif

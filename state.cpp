@@ -21,3 +21,17 @@ void handle_state_machine(state_machine_t *sm, void *context) {
       break;
   }
 }
+
+garden_state_t int_to_garden_state_t(int c) {
+  switch(c) {
+    case ERROR:
+    case CLEAR_ERROR:
+    case STATUS_CALL:
+    case CALIBRATION:
+    case CONFIG:
+      return (garden_state_t)c;
+    default:
+      return NONE;
+  }
+
+}
