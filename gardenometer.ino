@@ -7,7 +7,7 @@
 #define CONTROLLER_ID "G1"
 #define MOISTURE_PIN A0
 #define LUX_PIN A2
-#define TEMP_PIN 4
+#define TEMP_PIN 3
 #define GOOD_STATE_PIN 6
 #define CALIBRATION_PIN 8
 #define ERROR_PIN 10
@@ -15,6 +15,7 @@
 const char *code_prefix = "code:";
 const char *config_prefix = "config:";
 const char *cal_prefix = "cal:";
+const char *status_prefix = "status:";
 
 // define structures
 struct calibration {
@@ -185,7 +186,7 @@ void garden_status(state_machine_t *machine, void* context) {
   int moisture = read_soil_moisture(state->config.moisture_pin, state->calibration);
   float lux = read_lux(state->config.lux_pin);
   float temp = read_temperature(&state->temperature);
-  String value = "t=" + String(temp) + ";l=" + String(lux) + ";m=" + String(moisture);
+  String value = String(status_prefix) + "t=" + String(temp) + ";l=" + String(lux) + ";m=" + String(moisture);
   println(value);
 }
 
