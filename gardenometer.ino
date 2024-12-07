@@ -16,15 +16,22 @@ struct calibration {
   int waterValue;
 };
 
+struct config {
+  int wait_time;
+};
+
 struct garden_state {
   struct calibration calibration;
   DallasTemperature temperature;
+  struct config config;
+  String serial_data;
 };
 
 // define functions
 void garden_status(state_machine_t *machine, void* context);
 void garden_calibration(state_machine_t *machine, void* context);
 void garden_error(state_machine_t *machine, void* context);
+void garden_config(state_machine_t *machine, void* context);
 
 /**
  * Read and convert moisture value to a percentage value.
@@ -79,27 +86,28 @@ void setup() {
   state_machine.status = garden_status;
   state_machine.calibration = garden_calibration;
   state_machine.error = garden_error;
+  state_machine.config = garden_config;
   struct calibration calibration;
   memset(&calibration, 0, sizeof(struct calibration));
   state.calibration = calibration;
+  struct config config;
+  config.wait_time = 1000 * 60;
+  state.config = config;
   state.temperature = sensors;
+}
+
+void parse_serial(String data) {
+  // TODO parse serial data
 }
 
 // loop function
 void loop() {
-  int wait = 1000;
-  int espResponse = -1;
-  // TODO see if this is the right way to read data from the serial port
+  state.serial_data = "";
   if (Serial.available()) {
-    espResponse = Serial.read();
+    state.serial_data = Serial.readStringUntil('\n');
   }
   handle_state_machine(&state_machine, state);
-  // if the state is status then we want to wait about a minute
-  // before reporting again.
-  if (state_machine.state == STATUS) {
-    wait = 1000 * 60;
-  }
-  delay(wait);
+  delay(state.config.wait_time);
 }
 
 int avg_moisture() {
@@ -130,13 +138,21 @@ void garden_calibration(state_machine_t *machine, void* context) {
   delay(1000);
   writePin(calibration_pin, LOW);
   state->calibration.waterValue = avg_moisture();
+  machine->state = STATUS;
 }
 
 void garden_error(state_machine_t *machine, void* context) {
-  Serial.println("error state...");
   if (machine->state == ERROR) {
     writePin(error_pin, HIGH);
+    machine->state = NONE;
   } else {
     writePin(error_pin, LOW);
+    machine->state = STATUS;
   }
+}
+
+void garden_config(state_machine_t *machine, void* context) {
+  struct garden_state *state = (struct garden_state *)context;
+
+  machine->state = STATUS;
 }
