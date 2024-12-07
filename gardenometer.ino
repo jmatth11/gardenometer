@@ -1,4 +1,6 @@
 #include <string.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 #include "state.h"
 
 // define constants
