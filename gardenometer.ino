@@ -1,18 +1,34 @@
 #include <string.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
+#include <OLEDHelper.h>
 #include "state.h"
 #include "garden_types.h"
 #include "serial_parse.h"
 
 // define constants
 #define CONTROLLER_ID "G1"
-#define MOISTURE_PIN A0
+#define MOISTURE_PIN A1
 #define LUX_PIN A2
-#define TEMP_PIN 2
+#define TEMP_PIN 4
 #define GOOD_STATE_PIN 10
 #define CALIBRATION_PIN 8
 #define ERROR_PIN 6
+const String init_str = "Initializing...";
+const String err_header = "ERROR";
+const String calibration_header = "Calibrating";
+const String cal_air_msg = "Reading air values...";
+const String cal_water_msg = "Reading water values...";
+const String cal_switch_msg = "Put moisture sensor in water.";
+const String done_msg = "Done.";
+const String config_header = "Configuring.";
+
+// initialize globals
+struct state state;
+state_machine_t state_machine;
+OLEDHelper display;
+// Setup a oneWire instance to communicate with any OneWire devices
+OneWire oneWire(TEMP_PIN);
 
 // define functions
 void garden_status(state_machine_t *machine, void* context);
@@ -27,15 +43,24 @@ void println(String msg) {
   Serial.println(msg + "id="+CONTROLLER_ID);
 }
 
+void display_status(int moisture, float lux, float temp) {
+  String header = String(CONTROLLER_ID) + " DATA";
+  String msg = "Lux:";
+  msg += String(lux) + "Temp:" + String(temp) + "Moisture:" + String(moisture);
+  display.write(header, msg);
+}
+
 /**
  * Read and convert moisture value to a percentage value.
  * @param[in] cal The calibration data.
- * @return Percent value of moisture.
+ * @return Percent value of moisture, if both calibration values are zero the raw value is returned.
  */
 int read_soil_moisture(int pin, const struct calibration cal) {
   int raw_value = analogRead(pin);
-  return raw_value;
-  //return map(raw_value, cal.airValue, cal.waterValue, 0, 100);
+  if (cal.airValue == 0 && cal.waterValue == 0) {
+    return raw_value;
+  }
+  return map(raw_value, cal.airValue, cal.waterValue, 0, 100);
 }
 
 /**
@@ -62,12 +87,6 @@ float read_temperature(DallasTemperature *sensor) {
   return sensor->getTempFByIndex(0);
 }
 
-// initialize globals
-struct state state;
-state_machine_t state_machine;
-// Setup a oneWire instance to communicate with any OneWire devices
-OneWire oneWire(TEMP_PIN);
-
 // setup function
 void setup() {
   Serial.begin(9600);
@@ -75,6 +94,14 @@ void setup() {
   // initialize global structures
   // Pass our oneWire reference to Dallas Temperature sensor
   DallasTemperature sensors(&oneWire);
+  if (!display.setup()) {
+    publish_error("display failed to initialize.");
+  }
+  display.write(
+    init_str,
+    display.getCenteredX(init_str),
+    display.getCenteredY(init_str)
+  );
   state_machine.state = STATUS_CALL;
   state_machine.status = garden_status;
   state_machine.calibration = garden_calibration;
@@ -82,8 +109,8 @@ void setup() {
   state_machine.config = garden_config;
   struct calibration calibration;
   // default calibration values
-  calibration.airValue = 757;
-  calibration.waterValue = 740;
+  calibration.airValue = 0;
+  calibration.waterValue = 0;
   state.calibration = calibration;
   struct config config;
   config.wait_time = 1000;
@@ -134,7 +161,7 @@ int avg_moisture() {
   int tmp = 0;
   for(int i = 0; i < 5; ++i) {
     tmp += analogRead(MOISTURE_PIN);
-    delay(100);
+    delay(1000);
   }
   return tmp / 5;
 }
@@ -147,18 +174,24 @@ void garden_status(state_machine_t *machine, void* context) {
   float temp = read_temperature(&state->temperature);
   String value = String(status_prefix) + "t=" + String(temp) + ";l=" + String(lux) + ";m=" + String(moisture);
   println(value);
+  display_status(moisture, lux, temp);
 }
 
 void garden_calibration(state_machine_t *machine, void* context) {
   struct state *state = (struct state *)context;
+  display.write(calibration_header, "");
   digitalWrite(state->config.cal_pin, HIGH);
-  delay(1000);
+  delay(3000);
   digitalWrite(state->config.cal_pin, LOW);
+  display.write(calibration_header, cal_air_msg);
   state->calibration.airValue = avg_moisture();
+  display.write(calibration_header, cal_switch_msg);
   digitalWrite(state->config.cal_pin, HIGH);
-  delay(1000);
+  delay(3000);
   digitalWrite(state->config.cal_pin, LOW);
+  display.write(calibration_header, cal_water_msg);
   state->calibration.waterValue = avg_moisture();
+  display.write(calibration_header, done_msg);
   machine->state = STATUS_CALL;
 }
 
@@ -174,6 +207,7 @@ void garden_error(state_machine_t *machine, void* context) {
 }
 
 void publish_error(String err) {
+  display.write(err_header, err);
   println("status:e="+err);
 }
 
@@ -205,6 +239,11 @@ int get_config_value(struct state* state, enum config_index type, int orig, int 
 
 void garden_config(state_machine_t *machine, void* context) {
   struct state *state = (struct state *)context;
+  display.write(
+    config_header,
+    display.getCenteredX(config_header),
+    display.getCenteredY(config_header)
+  );
   struct config local;
   String err = parse_config(state->serial_data, &local);
   if (err.length() > 0) {
@@ -219,5 +258,10 @@ void garden_config(state_machine_t *machine, void* context) {
   state->config.good_pin = get_config_value(state, GOOD_INDEX, state->config.good_pin, local.good_pin);
   digitalWrite(state->config.err_pin, LOW);
   digitalWrite(state->config.good_pin, HIGH);
+  display.write(
+    done_msg,
+    display.getCenteredX(done_msg),
+    display.getCenteredY(done_msg)
+  );
   machine->state = STATUS_CALL;
 }
