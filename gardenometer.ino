@@ -115,7 +115,7 @@ void garden_status(state_machine_t *machine, void* context) {
   int moisture = read_soil_moisture(state->calibration);
   float lux = read_lux();
   float temp = read_temperature(state->temperature);
-  Serial.printf("t=%d;l=%d;m=%d", temp, lux, moisture);
+  Serial.printf("t=%f;l=%f;m=%d", temp, lux, moisture);
 }
 
 void garden_calibration(state_machine_t *machine, void* context) {

@@ -11,6 +11,9 @@ void handle_state_machine(state_machine_t *sm, void *context) {
     case ERROR:
       sm->error(sm, context);
       break;
+    case CLEAR_ERROR:
+      sm->error(sm, context);
+      break;
     default:
       break;
   }
