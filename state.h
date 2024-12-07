@@ -5,7 +5,7 @@ typedef enum garden_state {
   NONE = 0,
   ERROR,
   CLEAR_ERROR,
-  STATUS,
+  STATUS_CALL,
   CALIBRATION,
   CONFIG
 } garden_state_t;
