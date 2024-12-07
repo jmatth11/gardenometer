@@ -298,14 +298,19 @@ struct config parse_config(String data) {
   }
 }
 
-int get_config_value(enum config_index type, int orig, int incoming) {
+int get_config_value(struct state* state, enum config_index type, int orig, int incoming) {
   if (incoming != 0 && orig != incoming) {
     switch (type) {
       case MOISTURE_INDEX:
       case LUX_INDEX:
-      case TEMP_INDEX:
         pinMode(incoming, INPUT);
         break;
+      case TEMP_INDEX:{
+        // temp already has a pointer to oneWire
+        oneWire.begin(incoming);
+        state->temperature.begin();
+        break;
+      }
       case CAL_INDEX:
       case ERR_INDEX:
       case GOOD_INDEX:
@@ -322,13 +327,13 @@ int get_config_value(enum config_index type, int orig, int incoming) {
 void garden_config(state_machine_t *machine, void* context) {
   struct state *state = (struct state *)context;
   struct config local = parse_config(state->serial_data);
-  state->config.wait_time = get_config_value(state->config.wait_time, local.wait_time);
-  state->config.moisture_pin = get_config_value(state->config.moisture_pin, local.moisture_pin);
-  state->config.lux_pin = get_config_value(state->config.lux_pin, local.lux_pin);
-  state->config.temp_pin = get_config_value(state->config.temp_pin, local.temp_pin);
-  state->config.cal_pin = get_config_value(state->config.cal_pin, local.cal_pin);
-  state->config.err_pin = get_config_value(state->config.err_pin, local.err_pin);
-  state->config.good_pin = get_config_value(state->config.good_pin, local.good_pin);
+  state->config.wait_time = get_config_value(state, WAIT_INDEX, state->config.wait_time, local.wait_time);
+  state->config.moisture_pin = get_config_value(state, MOISTURE_INDEX, state->config.moisture_pin, local.moisture_pin);
+  state->config.lux_pin = get_config_value(state, LUX_INDEX, state->config.lux_pin, local.lux_pin);
+  state->config.temp_pin = get_config_value(state, TEMP_INDEX, state->config.temp_pin, local.temp_pin);
+  state->config.cal_pin = get_config_value(state, CAL_INDEX, state->config.cal_pin, local.cal_pin);
+  state->config.err_pin = get_config_value(state, ERR_INDEX, state->config.err_pin, local.err_pin);
+  state->config.good_pin = get_config_value(state, GOOD_INDEX, state->config.good_pin, local.good_pin);
   digitalWrite(state->config.err_pin, LOW);
   digitalWrite(state->config.good_pin, HIGH);
   machine->state = STATUS;
