@@ -53,60 +53,20 @@ String parse_config(String data, struct config* out) {
         }
         break;
       }
-      case MOISTURE_INDEX:{
+      case MOISTURE_AIR:{
         if (data.charAt(1) == '=') {
           result = parse_value(data);
-          out->moisture_pin = result.value;
+          out->moisture_air = result.value;
           data = data.substring(result.starting_idx);
         } else {
           err_msg = err_msg + "error for code:" + idx + "; ";
         }
         break;
       }
-      case LUX_INDEX:{
+      case MOISTURE_WATER:{
         if (data.charAt(1) == '=') {
           result = parse_value(data);
-          out->lux_pin = result.value;
-          data = data.substring(result.starting_idx);
-        } else {
-          err_msg = err_msg + "error for code:" + idx + "; ";
-        }
-        break;
-      }
-      case TEMP_INDEX:{
-        if (data.charAt(1) == '=') {
-          result = parse_value(data);
-          out->temp_pin = result.value;
-          data = data.substring(result.starting_idx);
-        } else {
-          err_msg = err_msg + "error for code:" + idx + "; ";
-        }
-        break;
-      }
-      case CAL_INDEX:{
-        if (data.charAt(1) == '=') {
-          result = parse_value(data);
-          out->cal_pin = result.value;
-          data = data.substring(result.starting_idx);
-        } else {
-          err_msg = err_msg + "error for code:" + idx + "; ";
-        }
-        break;
-      }
-      case ERR_INDEX:{
-        if (data.charAt(1) == '=') {
-          result = parse_value(data);
-          out->err_pin = result.value;
-          data = data.substring(result.starting_idx);
-        } else {
-          err_msg = err_msg + "error for code:" + idx + "; ";
-        }
-        break;
-      }
-      case GOOD_INDEX:{
-        if (data.charAt(1) == '=') {
-          result = parse_value(data);
-          out->good_pin = result.value;
+          out->moisture_water = result.value;
           data = data.substring(result.starting_idx);
         } else {
           err_msg = err_msg + "error for code:" + idx + "; ";

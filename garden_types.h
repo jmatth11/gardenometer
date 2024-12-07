@@ -11,22 +11,14 @@ struct calibration {
 
 enum config_index {
   WAIT_INDEX=0,
-  MOISTURE_INDEX,
-  LUX_INDEX,
-  TEMP_INDEX,
-  CAL_INDEX,
-  ERR_INDEX,
-  GOOD_INDEX
+  MOISTURE_AIR,
+  MOISTURE_WATER,
 };
 
 struct config {
   int wait_time;
-  int moisture_pin;
-  int lux_pin;
-  int temp_pin;
-  int cal_pin;
-  int err_pin;
-  int good_pin;
+  int moisture_air;
+  int moisture_water;
 };
 
 struct state {
