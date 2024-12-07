@@ -8,9 +8,9 @@
 #define MOISTURE_PIN A0
 #define LUX_PIN A2
 #define TEMP_PIN 4
-#define GOOD_STATE_PIN = 6;
-#define CALIBRATION_PIN = 8;
-#define ERROR_PIN = 10;
+#define GOOD_STATE_PIN 6
+#define CALIBRATION_PIN 8
+#define ERROR_PIN 10
 
 const char *code_prefix = "code:";
 const char *config_prefix = "config:";
@@ -23,13 +23,13 @@ struct calibration {
 };
 
 enum config_index {
-  WAIT_INDEX=0;
-  MOISTURE_INDEX;
-  LUX_INDEX;
-  TEMP_INDEX;
-  CAL_INDEX;
-  ERR_INDEX;
-  GOOD_PIN;
+  WAIT_INDEX=0,
+  MOISTURE_INDEX,
+  LUX_INDEX,
+  TEMP_INDEX,
+  CAL_INDEX,
+  ERR_INDEX,
+  GOOD_INDEX,
 };
 
 struct config {
@@ -125,46 +125,46 @@ void setup() {
   state.temperature = sensors;
 
   // set pins
-  pinMode(config.good_pin, OUTPUT)
+  pinMode(config.good_pin, OUTPUT);
   pinMode(config.cal_pin, OUTPUT);
   pinMode(config.err_pin, OUTPUT);
   pinMode(config.moisture_pin, INPUT);
-  pinMode(cofnig.lux_pin, INPUT);
+  pinMode(config.lux_pin, INPUT);
   sensors.begin();
   digitalWrite(config.good_pin, HIGH);
   digitalWrite(config.err_pin, LOW);
 }
 
-void parse_serial(state_machine_t* sm, String data) {
+void parse_serial(state_machine_t* sm, struct state* state, String data) {
   if (data.startsWith(code_prefix)) {
     String code = data.substring(strlen(code_prefix));
-    int code_value = atoi(code);
+    int code_value = code.toInt();
     sm->state = code_value;
   } else if (data.startsWith(config_prefix)) {
     sm->state = CONFIG;
-    sm->serial_data = data.substring(strlen(config_prefix));
+    state->serial_data = data.substring(strlen(config_prefix));
   } else if (data.startsWith(cal_prefix)) {
     sm->state = CALIBRATION;
   }
 }
 
-void flip_leds_on_state(const state_machine_t* sm) {
+void flip_leds_on_state(const state_machine_t* sm, struct state *state) {
   if (sm->state == ERROR) {
-    digitalWrite(sm->config.good_pin, LOW);
-    digitalWrite(sm->config.err_pin, HIGH);
+    digitalWrite(state->config.good_pin, LOW);
+    digitalWrite(state->config.err_pin, HIGH);
   } else if (sm->state == CLEAR_ERROR) {
-    digitalWrite(sm->config.good_pin, HIGH);
-    digitalWrite(sm->config.err_pin, LOW);
+    digitalWrite(state->config.good_pin, HIGH);
+    digitalWrite(state->config.err_pin, LOW);
   }
 }
 
 // loop function
 void loop() {
   state.serial_data = "";
-  flip_leds_on_state(&state_machine);
+  flip_leds_on_state(&state_machine, &state);
   if (Serial.available()) {
     String data = Serial.readStringUntil('\n');
-    parse_serial(&state_machine, data);
+    parse_serial(&state_machine, &state, data);
   }
   handle_state_machine(&state_machine, &state);
   delay(state.config.wait_time);
@@ -203,6 +203,7 @@ void garden_calibration(state_machine_t *machine, void* context) {
 }
 
 void garden_error(state_machine_t *machine, void* context) {
+  struct state* state = (struct state*)context;
   if (machine->state == ERROR) {
     digitalWrite(state->config.err_pin, HIGH);
     machine->state = NONE;
