@@ -20,7 +20,7 @@ struct config {
   int wait_time;
 };
 
-struct garden_state {
+struct state {
   struct calibration calibration;
   DallasTemperature temperature;
   struct config config;
@@ -65,7 +65,7 @@ float read_temperature(DallasTemperature *sensor) {
 }
 
 // initialize globals
-struct garden_state state;
+struct state state;
 state_machine_t state_machine;
 
 // setup function
@@ -91,7 +91,7 @@ void setup() {
   memset(&calibration, 0, sizeof(struct calibration));
   state.calibration = calibration;
   struct config config;
-  config.wait_time = 1000 * 60;
+  config.wait_time = 1000;
   state.config = config;
   state.temperature = sensors;
 }
@@ -106,7 +106,7 @@ void loop() {
   if (Serial.available()) {
     state.serial_data = Serial.readStringUntil('\n');
   }
-  handle_state_machine(&state_machine, state);
+  handle_state_machine(&state_machine, &state);
   delay(state.config.wait_time);
 }
 
@@ -121,38 +121,39 @@ int avg_moisture() {
 
 // implement state functions
 void garden_status(state_machine_t *machine, void* context) {
-  struct garden_state *state = (struct garden_state *)context;
+  struct state *state = (struct state *)context;
   int moisture = read_soil_moisture(state->calibration);
   float lux = read_lux();
-  float temp = read_temperature(state->temperature);
-  Serial.printf("t=%f;l=%f;m=%d", temp, lux, moisture);
+  float temp = read_temperature(&state->temperature);
+  String value = "t=" + String(temp) + ";l=" + String(lux) + ";m=" + String(moisture);
+  Serial.println(value);
 }
 
 void garden_calibration(state_machine_t *machine, void* context) {
-  struct garden_state *state = (struct garden_state *)context;
-  writePin(calibration_pin, HIGH);
+  struct state *state = (struct state *)context;
+  digitalWrite(calibration_pin, HIGH);
   delay(1000);
-  writePin(calibration_pin, LOW);
+  digitalWrite(calibration_pin, LOW);
   state->calibration.airValue = avg_moisture();
-  writePin(calibration_pin, HIGH);
+  digitalWrite(calibration_pin, HIGH);
   delay(1000);
-  writePin(calibration_pin, LOW);
+  digitalWrite(calibration_pin, LOW);
   state->calibration.waterValue = avg_moisture();
   machine->state = STATUS;
 }
 
 void garden_error(state_machine_t *machine, void* context) {
   if (machine->state == ERROR) {
-    writePin(error_pin, HIGH);
+    digitalWrite(error_pin, HIGH);
     machine->state = NONE;
   } else {
-    writePin(error_pin, LOW);
+    digitalWrite(error_pin, LOW);
     machine->state = STATUS;
   }
 }
 
 void garden_config(state_machine_t *machine, void* context) {
-  struct garden_state *state = (struct garden_state *)context;
+  struct state *state = (struct state *)context;
 
   machine->state = STATUS;
 }
