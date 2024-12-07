@@ -31,7 +31,7 @@ void garden_error(state_machine_t *machine, void* context);
  */
 int read_soil_moisture(const struct calibration cal) {
   int raw_value = analogRead(MOISTURE_PIN);
-  return map(raw_value, raw_min, raw_max, 0, 100);
+  return map(raw_value, cal.airValue, cal.waterValue, 0, 100);
 }
 
 /**
