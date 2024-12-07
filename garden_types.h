@@ -34,6 +34,7 @@ struct state {
   DallasTemperature temperature;
   struct config config;
   String serial_data;
+  unsigned long last_print;
 };
 
 #endif
